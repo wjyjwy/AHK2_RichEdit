@@ -1,18 +1,18 @@
 ; ======================================================================================================================
-; Scriptname:     RichEdit.ahk
-; Namespace:      RichEdit
-; Author:         just me
-; AHK Version:    2.0.2 (Unicode)
-; OS Version:     Win 10 Pro (x64)
-; Function:       The class provides some wrapper functions for rich edit controls (v4.1 Unicode).
-; Change History:
-;    1.0.00.00    2023-05-23/just me - initial release
-; Credits:
-;    corrupt for cRichEdit:
+; 脚本名称:     RichEdit.ahk
+; 命名空间:      RichEdit
+; 作者:         just me
+; AHK 版本:    2.0.2 (Unicode)
+; 操作系统版本:     Win 10 Pro (x64)
+; 功能:       此类为富文本编辑控件 (v4.1 Unicode) 提供一些包装函数。
+; 更改历史:
+;    1.0.00.00    2023-05-23/just me - 初始发布
+; 鸣谢:
+;    corrupt 提供的 cRichEdit:
 ;       http://www.autohotkey.com/board/topic/17869-crichedit-standard-richedit-control-for-autohotkey-scripts/
-;    jballi for HE_Print:
+;    jballi 提供的 HE_Print:
 ;       http://www.autohotkey.com/board/topic/45513-function-he-print-wysiwyg-print-for-the-hiedit-control/
-;    majkinetor for Dlg:
+;    majkinetor 提供的 Dlg:
 ;       http://www.autohotkey.com/board/topic/15836-module-dlg-501/
 ; ======================================================================================================================
 #Requires AutoHotkey v2.0
@@ -20,13 +20,13 @@
 ; ======================================================================================================================
 Class RichEdit {
    ; ===================================================================================================================
-   ; Class variables - do not change !!!
-   ; ===================================================================================================================
-   ; Callback functions for RichEdit
+; 类变量 - 请勿更改！！！
+; ===================================================================================================================
+   ; RichEdit 的回调函数
    Static GetRTFCB := 0
    Static LoadRTFCB := 0
    Static SubclassCB := 0
-   ; Initialize the class on startup
+   ; 在启动时初始化类
    Static __New() {
       ; RichEdit.SubclassCB := CallbackCreate(RichEdit_SubclassProc)
       RichEdit.GetRTFCB := CallbackCreate(ObjBindMethod(RichEdit, "GetRTFProc"), , 4)
@@ -34,7 +34,7 @@ Class RichEdit {
       RichEdit.SubclassCB := CallbackCreate(ObjBindMethod(RichEdit, "SubclassProc"), , 6)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   Static GetRTFProc(dwCookie, pbBuff, cb, pcb) { ; Callback procedure for GetRTF
+   Static GetRTFProc(dwCookie, pbBuff, cb, pcb) { ; GetRTF 的回调过程
       Static RTF := ""
       If (cb > 0) {
          RTF .= StrGet(pbBuff, cb, "CP0")
@@ -49,18 +49,18 @@ Class RichEdit {
       Return 1
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   Static LoadRTFProc(FileHandle, pbBuff, cb, pcb) { ; Callback procedure for LoadRTF
+   Static LoadRTFProc(FileHandle, pbBuff, cb, pcb) { ; LoadRTF 的回调过程
       Return !DllCall("ReadFile", "Ptr", FileHandle, "Ptr", pbBuff, "UInt", cb, "Ptr", pcb, "Ptr", 0)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   Static SubclassProc(H, M, W, L, I, R) { ; RichEdit subclassproc
-      ; See -> docs.microsoft.com/en-us/windows/win32/api/commctrl/nc-commctrl-subclassproc
+   Static SubclassProc(H, M, W, L, I, R) { ; RichEdit 子类过程
+      ; 请参阅 -> docs.microsoft.com/en-us/windows/win32/api/commctrl/nc-commctrl-subclassproc
       ; WM_GETDLGCODE = 0x87, DLGC_WANTALLKEYS = 4
       Return (M = 0x87) ? 4 : DllCall("DefSubclassProc", "Ptr", H, "UInt", M, "Ptr", W, "Ptr", L, "Ptr")
    }
    ; ===================================================================================================================
-   ; CONSTRUCTOR
-   ; ===================================================================================================================
+; 构造函数
+; ===================================================================================================================
    __New(GuiObj, Options, MultiLine := True) {
       Static WS_TABSTOP := 0x10000, WS_HSCROLL := 0x100000, WS_VSCROLL := 0x200000, WS_VISIBLE := 0x10000000,
              WS_CHILD := 0x40000000,
@@ -69,21 +69,21 @@ Class RichEdit {
              ES_WANTRETURN := 0x1000, ES_DISABLENOSCROLL := 0x2000, ES_SUNKEN := 0x4000, ES_SAVESEL := 0x8000,
              ES_SELECTIONBAR := 0x1000000
       Static MSFTEDIT_CLASS := "RICHEDIT50W" ; RichEdit v4.1+ (Unicode)
-      ; Specify default styles & exstyles
+      ; 指定默认样式和扩展样式
       Styles := WS_TABSTOP | WS_VISIBLE | WS_CHILD | ES_AUTOHSCROLL
       If (MultiLine)
-         Styles |= WS_HSCROLL | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_NOHIDESEL | ES_WANTRETURN |
-                   ES_DISABLENOSCROLL | ES_SAVESEL ; | ES_SELECTIONBAR ; does not work properly
+         Styles |= WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_NOHIDESEL | ES_WANTRETURN |
+                   ES_DISABLENOSCROLL | ES_SAVESEL ; | WS_HSCROLL | ES_SELECTIONBAR ; does not work properly
       ExStyles := WS_EX_STATICEDGE
-      ; Create the control
+      ; 创建控件
       CtrlOpts := "Class" . MSFTEDIT_CLASS . " " . Options . " +" . Styles . " +E" . ExStyles
       This.RE := GuiObj.AddCustom(CtrlOpts)
-      ; Initialize control
+      ; 初始化控件
       ; EM_SETLANGOPTIONS = 0x0478 (WM_USER + 120)
       ; IMF_AUTOKEYBOARD = 0x01, IMF_AUTOFONT = 0x02
-      ; SendMessage(0x0478, 0, 0x03, This.HWND) ; commented out
-      ; Subclass the control to get Tab key and prevent Esc from sending a WM_CLOSE message to the parent window.
-      ; One of majkinetor's splendid discoveries!
+      ; SendMessage(0x0478, 0, 0x03, This.HWND) ; 已注释
+      ; 子类化控件以获取 Tab 键并防止 Esc 向父窗口发送 WM_CLOSE 消息。
+      ; majkinetor 的出色发现之一！
       DllCall("SetWindowSubclass", "Ptr", This.HWND, "Ptr", RichEdit.SubclassCB, "Ptr", This.HWND, "Ptr", 0)
       This.MultiLine := !!MultiLine
       This.DefFont := This.GetFont(1)
@@ -91,29 +91,29 @@ Class RichEdit {
       This.BackColor := DllCall("GetSysColor", "Int", 5, "UInt") ; COLOR_WINDOW
       This.TextColor := This.DefFont.Color
       This.TxBkColor := This.DefFont.BkColor
-      ; Additional settings for multiline controls
+      ; 多行控件的其他设置
       If (MultiLine) {
-         ; Adjust the formatting rectangle
+         ; 调整格式矩形
          RC := This.GetRect()
          This.SetRect(RC.L + 6, RC.T + 2, RC.R, RC.B)
-         ; Set advanced typographic options
+         ; 设置高级排版选项
          ; EM_SETTYPOGRAPHYOPTIONS = 0x04CA (WM_USER + 202)
-         ; TO_ADVANCEDTYPOGRAPHY	= 1, TO_ADVANCEDLAYOUT = 8 ? not documented
+         ; TO_ADVANCEDTYPOGRAPHY = 1, TO_ADVANCEDLAYOUT = 8 ? 未文档化
          SendMessage(0x04CA, 1, 1, This.HWND)
       }
-      ; Correct AHK font size setting, if necessary
+      ; 如有必要，更正 AHK 字体大小设置
       If (Round(This.DefFont.Size) != This.DefFont.Size) {
          This.DefFont.Size := Round(This.DefFont.Size)
          This.SetDefaultFont()
       }
-      ; Initialize the print margins
+      ; 初始化打印边距
       This.GetMargins()
-      ; Initialize the text limit
+      ; 初始化文本限制
       This.LimitText(2147483647)
    }
    ; ===================================================================================================================
-   ; DESTRUCTOR
-   ; ===================================================================================================================
+; 析构函数
+; ===================================================================================================================
    __Delete() {
       If DllCall("IsWindow", "Ptr", This.HWND) && (RichEdit.SubclassCB) {
          DllCall("RemoveWindowSubclass", "Ptr", This.HWND, "Ptr", RichEdit.SubclassCB, "Ptr", 0)
@@ -121,8 +121,8 @@ Class RichEdit {
       This.RE := 0
    }
    ; ===================================================================================================================
-   ; GUICONTROL PROPERTIES =============================================================================================
-   ; ===================================================================================================================
+; GUI控件属性 ========================================================================================================
+; ===================================================================================================================
    ClassNN => This.RE.ClassNN
    Enabled => This.RE.Enabled
    Focused => This.RE.Focused
@@ -134,8 +134,8 @@ Class RichEdit {
    }
    Visible => This.RE.Visible
    ; ===================================================================================================================
-   ; GUICONTROL METHODS ================================================================================================
-   ; ===================================================================================================================
+; GUI控件方法 ========================================================================================================
+; ===================================================================================================================
    Focus() => This.RE.Focus()
    GetPos(&X?, &Y?, &W?, &H?) => This.RE.GetPos(&X?, &Y?, &W?, &H?)
    Move(X?, Y?, W?, H?) => This.RE.Move(X?, Y?, W?, H?)
@@ -144,59 +144,59 @@ Class RichEdit {
    Opt(Options) => This.RE.Opt(Options)
    Redraw() => This.RE.Redraw()
    ; ===================================================================================================================
-   ; PUBLIC METHODS ====================================================================================================
+; 公共方法 ==========================================================================================================
+; ===================================================================================================================
    ; ===================================================================================================================
-   ; ===================================================================================================================
-   ; Methods to be used by advanced users only
-   ; ===================================================================================================================
-   GetCharFormat() { ; Retrieves the character formatting of the current selection
-      ; For details see http://msdn.microsoft.com/en-us/library/bb787883(v=vs.85).aspx.
-      ; Returns a 'CF2' object containing the formatting settings.
+; 仅供高级用户使用的方法
+; ===================================================================================================================
+   GetCharFormat() { ; 检索当前选择的字符格式
+      ; 有关详细信息，请参阅 http://msdn.microsoft.com/en-us/library/bb787883(v=vs.85).aspx。
+      ; 返回包含格式设置的 'CF2' 对象。
       ; EM_GETCHARFORMAT = 0x043A
       CF2 := RichEdit.CHARFORMAT2()
       SendMessage(0x043A, 1, CF2.Ptr, This.HWND)
       Return (CF2.Mask ? CF2 : False)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetCharFormat(CF2) { ; Sets character formatting of the current selection
-      ; For details see http://msdn.microsoft.com/en-us/library/bb787883(v=vs.85).aspx.
-      ; CF2 : CF2 object like returned by GetCharFormat().
+   SetCharFormat(CF2) { ; 设置当前选择的字符格式
+      ; 有关详细信息，请参阅 http://msdn.microsoft.com/en-us/library/bb787883(v=vs.85).aspx。
+      ; CF2 : 类似于 GetCharFormat() 返回的 CF2 对象。
       ; EM_SETCHARFORMAT = 0x0444
       Return SendMessage(0x0444, 1, CF2.Ptr, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetParaFormat() { ; Retrieves the paragraph formatting of the current selection
-      ; For details see http://msdn.microsoft.com/en-us/library/bb787942(v=vs.85).aspx.
-      ; Returns a 'PF2' object containing the formatting settings.
+   GetParaFormat() { ; 检索当前选择的段落格式
+      ; 有关详细信息，请参阅 http://msdn.microsoft.com/en-us/library/bb787942(v=vs.85).aspx。
+      ; 返回包含格式设置的 'PF2' 对象。
       ; EM_GETPARAFORMAT = 0x043D
       PF2 := RichEdit.PARAFORMAT2()
       SendMessage(0x043D, 0, PF2.Ptr, This.HWND)
       Return (PF2.Mask ? PF2 : False)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetParaFormat(PF2) { ; Sets the  paragraph formatting for the current selection
-      ; For details see http://msdn.microsoft.com/en-us/library/bb787942(v=vs.85).aspx.
-      ; PF2 : PF2 object like returned by GetParaFormat().
+   SetParaFormat(PF2) { ; 为当前选择设置段落格式
+      ; 有关详细信息，请参阅 http://msdn.microsoft.com/en-us/library/bb787942(v=vs.85).aspx。
+      ; PF2 : 类似于 GetParaFormat() 返回的 PF2 对象。
       ; EM_SETPARAFORMAT = 0x0447
       Return SendMessage(0x0447, 0, PF2.Ptr, This.HWND)
    }
    ; ===================================================================================================================
-   ; Control specific
-   ; ===================================================================================================================
-   IsModified() { ; Has the control been  modified?
+; 控件特定
+; ===================================================================================================================
+   IsModified() { ; 控件是否已修改？
       ; EM_GETMODIFY = 0xB8
       Return SendMessage(0xB8, 0, 0, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetModified(Modified := False) {  ; Sets or clears the modification flag for an edit control
+   SetModified(Modified := False) {  ; 设置或清除编辑控件的修改标志
       ; EM_SETMODIFY = 0xB9
       Return SendMessage(0xB9, !!Modified, 0, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetEventMask(Events?) { ; Set the events which shall send notification codes control's owner
-      ; Events : Array containing one or more of the keys defined in 'ENM'.
-      ; For details see http://msdn.microsoft.com/en-us/library/bb774238(v=vs.85).aspx
-      ; EM_SETEVENTMASK	= 	0x0445
+   SetEventMask(Events?) { ; 设置应向控件所有者发送通知代码的事件
+      ; Events : 包含一个或多个在 'ENM' 中定义的键的数组。
+      ; 有关详细信息，请参阅 http://msdn.microsoft.com/en-us/library/bb774238(v=vs.85).aspx
+      ; EM_SETEVENTMASK = 0x0445
       Static ENM := {NONE: 0x00, CHANGE: 0x01, UPDATE: 0x02, SCROLL: 0x04, SCROLLEVENTS: 0x08, DRAGDROPDONE: 0x10,
                      PARAGRAPHEXPANDED: 0x20, PAGECHANGE: 0x40, KEYEVENTS: 0x010000, MOUSEEVENTS: 0x020000,
                      REQUESTRESIZE: 0x040000, SELCHANGE: 0x080000, DROPFILES: 0x100000, PROTECTED: 0x200000,
@@ -213,28 +213,28 @@ Class RichEdit {
       Return SendMessage(0x0445, 0, Mask, This.HWND)
    }
    ; ===================================================================================================================
-   ; Loading and storing RTF format
+   ; 加载和存储 RTF 格式
    ; ===================================================================================================================
-   GetRTF(Selection := False) { ; Gets the whole content of the control as rich text
-      ; Selection = False : whole contents (default)
-      ; Selection = True  : current selection
+   GetRTF(Selection := False) { ; 获取控件的全部内容作为富文本
+      ; Selection = False : 全部内容 (默认)
+      ; Selection = True  : 当前选择
       ; EM_STREAMOUT = 0x044A
       ; SF_TEXT = 0x1, SF_RTF = 0x2, SF_RTFNOOBJS = 0x3, SF_UNICODE = 0x10, SF_USECODEPAGE =	0x0020
       ; SFF_PLAINRTF = 0x4000, SFF_SELECTION = 0x8000
       ; UTF-8 = 65001, UTF-16 = 1200
       ; Static GetRTFCB := CallbackCreate(RichEdit_GetRTFProc)
       Flags := 0x4022 | (1200 << 16) | (Selection ? 0x8000 : 0)
-      ES := Buffer((A_PtrSize * 2) + 4, 0)                  ; EDITSTREAM structure
+      ES := Buffer((A_PtrSize * 2) + 4, 0)                  ; EDITSTREAM 结构
       NumPut("UPtr", This.HWND, ES)                         ; dwCookie
       NumPut("UPtr", RichEdit.GetRTFCB, ES, A_PtrSize + 4)  ; pfnCallback
       SendMessage(0x044A, Flags, ES.Ptr, This.HWND)
       Return RichEdit.GetRTFProc("*GetRTF*", 0, 0, 0)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   LoadRTF(FilePath, Selection := False) { ; Loads RTF file into the control
-      ; FilePath = file path
-      ; Selection = False : whole contents (default)
-      ; Selection = True  : current selection
+   LoadRTF(FilePath, Selection := False) { ; 将 RTF 文件加载到控件中
+      ; FilePath = 文件路径
+      ; Selection = False : 全部内容 (默认)
+      ; Selection = True  : 当前选择
       ; EM_STREAMIN = 0x0449
       ; SF_TEXT = 0x1, SF_RTF = 0x2, SF_RTFNOOBJS = 0x3, SF_UNICODE = 0x10, SF_USECODEPAGE =	0x0020
       ; SFF_PLAINRTF = 0x4000, SFF_SELECTION = 0x8000
@@ -243,7 +243,7 @@ Class RichEdit {
       Flags := 0x4002 | (Selection ? 0x8000 : 0) ; | (1200 << 16)
       If !(File := FileOpen(FilePath, "r"))
          Return False
-      ES := Buffer((A_PtrSize * 2) + 4, 0)                     ; EDITSTREAM structure
+      ES := Buffer((A_PtrSize * 2) + 4, 0)                     ; EDITSTREAM 结构
       NumPut("UPtr", File.Handle, ES)                          ; dwCookie
       NumPut("UPtr", RichEdit.LoadRTFCB, ES, A_PtrSize + 4)    ; pfnCallback
       Result := SendMessage(0x0449, Flags, ES.Ptr, This.HWND)
@@ -251,47 +251,47 @@ Class RichEdit {
       Return Result
    }
    ; ===================================================================================================================
-   ; Scrolling
+   ; 滚动
    ; ===================================================================================================================
-   GetScrollPos() { ; Obtains the current scroll position
-      ; Returns on object with keys 'X' and 'Y' containing the scroll position.
+   GetScrollPos() { ; 获取当前滚动位置
+      ; 返回一个包含 'X' 和 'Y' 键的对象，分别表示滚动位置。
       ; EM_GETSCROLLPOS = 0x04DD
       PT := Buffer(8, 0)
       SendMessage(0x04DD, 0, PT.Ptr, This.HWND)
       Return {X: NumGet(PT, 0, "Int"), Y: NumGet(PT, 4, "Int")}
    }
    ; ------------------------------------------------------------------------------------------------------------------
-   SetScrollPos(X, Y) { ; Scrolls the contents of a rich edit control to the specified point
-      ; X : x-position to scroll to.
-      ; Y : y-position to scroll to.
+   SetScrollPos(X, Y) { ; 将富编辑控件的内容滚动到指定点
+      ; X : 要滚动到的 x 位置。
+      ; Y : 要滚动到的 y 位置。
       ; EM_SETSCROLLPOS = 0x04DE
       PT := Buffer(8, 0)
       NumPut("Int", X, "Int", Y, PT)
       Return SendMessage(0x04DE, 0, PT.Ptr, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   ScrollCaret() { ; Scrolls the caret into view
+   ScrollCaret() { ; 将插入点滚动到视图中
       ; EM_SCROLLCARET = 0x00B7
       SendMessage(0x00B7, 0, 0, This.HWND)
       Return True
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   ShowScrollBar(SB, Mode := True) { ; Shows or hides one of the scroll bars of a rich edit control
-      ; SB   : Identifies which scroll bar to display: horizontal or vertical.
-      ;        This parameter must be 1 (SB_VERT) or 0 (SB_HORZ).
-      ; Mode : Specify TRUE to show the scroll bar and FALSE to hide it.
+   ShowScrollBar(SB, Mode := True) { ; 显示或隐藏富编辑控件的滚动条
+      ; SB   : 指定要显示的滚动条：水平或垂直。
+      ;        此参数必须是 1 (SB_VERT) 或 0 (SB_HORZ)。
+      ; Mode : 指定 TRUE 显示滚动条，FALSE 隐藏滚动条。
       ; EM_SHOWSCROLLBAR = 0x0460 (WM_USER + 96)
       SendMessage(0x0460, SB, !!Mode, This.HWND)
       Return True
    }
    ; ===================================================================================================================
-   ; Text and selection
+   ; 文本和选择
    ; ===================================================================================================================
-   FindText(Find, Mode?) { ; Finds Unicode text within a rich edit control
-      ; Find : Text to search for.
-      ; Mode : Optional array containing one or more of the keys specified in 'FR'.
-      ;        For details see http://msdn.microsoft.com/en-us/library/bb788013(v=vs.85).aspx.
-      ; Returns True if the text was found; otherwise false.
+   FindText(Find, Mode?) { ; 在富编辑控件中查找 Unicode 文本
+      ; Find : 要搜索的文本。
+      ; Mode : 可选数组，包含 'FR' 中指定的一个或多个键。
+      ;        有关详细信息，请参阅 http://msdn.microsoft.com/en-us/library/bb788013(v=vs.85).aspx。
+      ; 如果找到文本则返回 True；否则返回 false。
       ; EM_FINDTEXTEXW = 0x047C, EM_SCROLLCARET = 0x00B7
       Static FR:= {DOWN: 1, WHOLEWORD: 2, MATCHCASE: 4}
       Flags := 0
@@ -314,13 +314,12 @@ Class RichEdit {
       Return True
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   ; Finds the next word break before or after the specified character position or retrieves information about
-   ; the character at that position.
+   ; 查找指定字符位置之前或之后的下一个单词分隔符，或检索有关该位置字符的信息。
    FindWordBreak(CharPos, Mode := "Left") { 
-      ; CharPos : Character position.
-      ; Mode    : Can be one of the keys specified in 'WB'.
-      ; Returns the character index of the word break or other values depending on 'Mode'.
-      ; For details see http://msdn.microsoft.com/en-us/library/bb788018(v=vs.85).aspx.
+      ; CharPos : 字符位置。
+      ; Mode    : 可以是 'WB' 中指定的键之一。
+      ; 返回单词分隔符的字符索引或根据 'Mode' 的其他值。
+      ; 有关详细信息，请参阅 http://msdn.microsoft.com/en-us/library/bb788018(v=vs.85).aspx。
       ; EM_FINDWORDBREAK = 0x044C (WM_USER + 76)
       Static WB := {LEFT: 0, RIGHT: 1, ISDELIMITER: 2, CLASSIFY: 3, MOVEWORDLEFT: 4, MOVEWORDRIGHT: 5, LEFTBREAK: 6
                   , RIGHTBREAK: 7}
@@ -328,8 +327,8 @@ Class RichEdit {
       Return SendMessage(0x044C, Option, CharPos, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetSelText() { ; Retrieves the currently selected text as plain text
-      ; Returns selected text.
+   GetSelText() { ; 检索当前选择的文本作为纯文本
+      ; 返回选择的文本。
       ; EM_GETSELTEXT = 0x043E, EM_EXGETSEL = 0x0434
       Txt := ""
       CR := This.GetSel()
@@ -342,21 +341,21 @@ Class RichEdit {
       Return Txt
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetSel() { ; Retrieves the starting and ending character positions of the selection in a rich edit control
-      ; Returns an object containing the keys S (start of selection) and E (end of selection)).
+   GetSel() { ; 检索富编辑控件中选择的开始和结束字符位置
+      ; 返回包含键 S (选择开始) 和 E (选择结束) 的对象。
       ; EM_EXGETSEL = 0x0434
       CR := Buffer(8, 0)
       SendMessage(0x0434, 0, CR.Ptr, This.HWND)
       Return {S: NumGet(CR, 0, "Int"), E: NumGet(CR, 4, "Int")}
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetText() {  ; Gets the whole content of the control as plain text
+   GetText() {  ; 获取控件的全部内容作为纯文本
       ; EM_GETTEXTEX = 0x045E
       Txt := ""
       If (TxtL := This.GetTextLen() + 1) {
-         GTX := Buffer(12 + (A_PtrSize * 2), 0) ; GETTEXTEX structure
+         GTX := Buffer(12 + (A_PtrSize * 2), 0) ; GETTEXTEX 结构
          NumPut("UInt", TxtL * 2, GTX) ; cb
-         NumPut("UInt", 1200, GTX, 8)  ; codepage = Unicode
+         NumPut("UInt", 1200, GTX, 8)  ; 代码页 = Unicode
          VarSetStrCapacity(&Txt, TxtL)
          SendMessage(0x045E, GTX.Ptr, StrPtr(Txt), This.HWND)
          VarSetStrCapacity(&Txt, -1)
@@ -364,28 +363,28 @@ Class RichEdit {
       Return Txt
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   ; GetTextColors() { ; Gets the text and background colors - not implemented
+   ; GetTextColors() { ; 获取文本和背景颜色 - 未实现
    ; }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetTextLen() { ; Calculates text length in various ways
+   GetTextLen() { ; 以各种方式计算文本长度
       ; EM_GETTEXTLENGTHEX = 0x045F
-      GTL := Buffer(8, 0)     ; GETTEXTLENGTHEX structure
-      NumPut( "UInt", 1200, GTL, 4)  ; codepage = Unicode
+      GTL := Buffer(8, 0)     ; GETTEXTLENGTHEX 结构
+      NumPut( "UInt", 1200, GTL, 4)  ; 代码页 = Unicode
       Return SendMessage(0x045F, GTL.Ptr, 0, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   ; Retrieves the position of the first occurence of the specified text within the specified range.
+   ; 检索指定文本在指定范围内的第一次出现位置。
    GetTextPos(Find, Min := 0, Max := -1, Mode := 1) { 
-      ; Find : Text to search for.
-      ; Min  : Character position index immediately preceding the first character in the range.
-      ;        Integer value to store as cpMin in the CHARRANGE structure.
-      ;        Default: 0 - first character
-      ; Max  : Character position immediately following the last character in the range.
-      ;        Integer value to store as cpMax in the CHARRANGE structure.
-      ;        Default: -1 - last character
-      ; Mode : Any combination of the following values:
-      ;        0 : search backward, 1 : search forward, 2 : match whole word only, 4 : case-sensitive
-      ; Returns an object containing the keys S (start of text) and E (end of text) if found, otherwise False.
+      ; Find : 要搜索的文本。
+      ; Min  : 范围中第一个字符之前的字符位置索引。
+      ;        要存储为 CHARRANGE 结构中 cpMin 的整数值。
+      ;        默认值: 0 - 第一个字符
+      ; Max  : 范围中最后一个字符之后的字符位置。
+      ;        要存储为 CHARRANGE 结构中 cpMax 的整数值。
+      ;        默认值: -1 - 最后一个字符
+      ; Mode : 以下值的任意组合:
+      ;        0 : 向后搜索, 1 : 向前搜索, 2 : 仅匹配整个单词, 4 : 区分大小写
+      ; 如果找到则返回包含键 S (文本开始) 和 E (文本结束) 的对象，否则返回 False。
       ; EM_FINDTEXTEXW = 0x047C
       Flags := Mode & 0x07
       FTX := Buffer(16 + A_PtrSize, 0)
@@ -394,11 +393,11 @@ Class RichEdit {
       Return (P = -1) ? False : {S: NumGet(FTX, 8 + A_PtrSize, "Int"), E: NumGet(FTX, 12 + A_PtrSize, "Int")}
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetTextRange(Min, Max) { ; Retrieves a specified range of characters from a rich edit control
-      ; Min : Character position index immediately preceding the first character in the range.
-      ;       Integer value to store as cpMin in the CHARRANGE structure.
-      ; Max : Character position immediately following the last character in the range.
-      ;       Integer value to store as cpMax in the CHARRANGE structure.
+   GetTextRange(Min, Max) { ; 从富编辑控件检索指定范围的字符
+      ; Min : 范围中第一个字符之前的字符位置索引。
+      ;       要存储为 CHARRANGE 结构中 cpMin 的整数值。
+      ; Max : 范围中最后一个字符之后的字符位置。
+      ;       要存储为 CHARRANGE 结构中 cpMax 的整数值。
       ; CHARRANGE -> http://msdn.microsoft.com/en-us/library/bb787885(v=vs.85).aspx
       ; EM_GETTEXTRANGE = 0x044B
       If (Max <= Min)
@@ -412,29 +411,29 @@ Class RichEdit {
       Return Txt
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   HideSelection(Mode) { ; Hides or shows the selection
-      ; Mode : True to hide or False to show the selection.
+   HideSelection(Mode) { ; 隐藏或显示选择
+      ; Mode : True 隐藏选择，False 显示选择。
       ; EM_HIDESELECTION = 0x043F (WM_USER + 63)
       SendMessage(0x043F, !!Mode, 0, This.HWND)
       Return True
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   LimitText(Limit) { ; Sets an upper limit to the amount of text the user can type or paste into a rich edit control
-      ; Limit : Specifies the maximum amount of text that can be entered.
-      ;         If this parameter is zero, the default maximum is used, which is 64K characters.
+   LimitText(Limit) { ; 设置用户可以键入或粘贴到富编辑控件中的文本数量的上限
+      ; Limit : 指定可以输入的最大文本量。
+      ;         如果此参数为零，则使用默认最大值，即 64K 字符。
       ; EM_EXLIMITTEXT =  0x435 (WM_USER + 53)
       SendMessage(0x0435, 0, Limit, This.HWND)
       Return True
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   ReplaceSel(Text := "") { ; Replaces the selected text with the specified text
+   ReplaceSel(Text := "") { ; 用指定文本替换选中的文本
       ; EM_REPLACESEL = 0xC2
       Return SendMessage(0xC2, 1, StrPtr(Text), This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetText(Text := "", Mode?) { ; Replaces the selection or the whole content of the control
-      ; Mode : Array of option flags. It can be any reasonable combination of the keys defined in 'ST'.
-      ; For details see http://msdn.microsoft.com/en-us/library/bb774284(v=vs.85).aspx.
+   SetText(Text := "", Mode?) { ; 替换控件的选择或全部内容
+      ; Mode : 选项标志数组。它可以是 'ST' 中定义的键的任何合理组合。
+      ; 有关详细信息，请参阅 http://msdn.microsoft.com/en-us/library/bb774284(v=vs.85).aspx。
       ; EM_SETTEXTEX = 0x0461, CP_UNICODE = 1200
       ; ST_DEFAULT = 0, ST_KEEPUNDO = 1, ST_SELECTION = 2, ST_NEWCHARS = 4 ???
       Static ST := {DEFAULT: 0, KEEPUNDO: 1, SELECTION: 2}
@@ -446,31 +445,31 @@ Class RichEdit {
       }
       CP := 1200
       TxtPtr := StrPtr(Text)
-      ; RTF formatted text has to be passed as ANSI!!!
+      ; RTF 格式化文本必须以 ANSI 格式传递!!!
       If (SubStr(Text, 1, 5) = "{\rtf") || (SubStr(Text, 1, 5) = "{urtf") {
          Buf := Buffer(StrPut(Text, "CP0"), 0)
          StrPut(Text, Buf, "CP0")
          TxtPtr := Buf.Ptr
          CP := 0
       }
-      STX := Buffer(8, 0)     ; SETTEXTEX structure
-      NumPut("UInt", Flags, "UInt", CP, STX) ; flags, codepage
+      STX := Buffer(8, 0)     ; SETTEXTEX 结构
+      NumPut("UInt", Flags, "UInt", CP, STX) ; 标志, 代码页
       Return SendMessage(0x0461, STX.Ptr, TxtPtr, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetSel(Start, End) { ; Selects a range of characters
-      ; Start : zero-based start index
-      ; End   : zero-beased end index (-1 = end of text))
+   SetSel(Start, End) { ; 选择字符范围
+      ; Start : 基于零的开始索引
+      ; End   : 基于零的结束索引 (-1 = 文本结束))
       ; EM_EXSETSEL = 0x0437
       CR := Buffer(8, 0)
       NumPut("Int", Start, "Int", End, CR)
       Return SendMessage(0x0437, 0, CR.Ptr, This.HWND)
    }
    ; ===================================================================================================================
-   ; Appearance, styles, and options
+   ; 外观、样式和选项
    ; ===================================================================================================================
-   AutoURL(Mode := 1) { ; En- or disable AutoURLDetection
-      ; Mode   :  one or a combination of the following values:
+   AutoURL(Mode := 1) { ; 启用或禁用自动URL检测
+      ; Mode   :  一个或组合以下值:
       ; Disable                  0
       ; AURL_ENABLEURL           1
       ; AURL_ENABLEEMAILADDR     2     ; Win 8+
@@ -483,9 +482,9 @@ Class RichEdit {
       Return RetVal
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetRect(&RC := "") { ; Retrieves the rich edit control's formatting rectangle
-      ; Returns an object with keys L (eft), T (op), R (ight), and B (ottom).
-      ; If a variable is passed in the Rect parameter, the complete RECT structure will be stored in it.
+   GetRect(&RC := "") { ; 检索富编辑控件的格式矩形
+      ; 返回包含键 L (左)、T (上)、R (右) 和 B (下) 的对象。
+      ; 如果在 Rect 参数中传递变量，则完整的 RECT 结构将存储在其中。
       RC := Buffer(16, 0)
       If !This.MultiLine
          Return False
@@ -493,10 +492,10 @@ Class RichEdit {
       Return {L: NumGet(RC, 0, "Int"), T: NumGet(RC, 4, "Int"), R: NumGet(RC, 8, "Int"), B: NumGet(RC, 12, "Int")}
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetOptions(&Options := "") { ; Retrieves the rich edit control`s options
-      ; Returns an array of currently set options as the keys defined in 'ECO'.
-      ; If a variable is passed in the Option parameter, the combined numeric value of the options will be stored in it.
-      ; For details see http://msdn.microsoft.com/en-us/library/bb774178(v=vs.85).aspx.
+   GetOptions(&Options := "") { ; 检索富编辑控件的选项
+      ; 返回一个数组，其中包含当前设置的选项，作为 'ECO' 中定义的键。
+      ; 如果在 Option 参数中传递变量，则选项的组合数值将存储在其中。
+      ; 有关详细信息，请参阅 http://msdn.microsoft.com/en-us/library/bb774178(v=vs.85).aspx。
       ; EM_GETOPTIONS = 0x044E
       Static ECO := {AUTOWORDSELECTION: 0x01, AUTOVSCROLL: 0x40, AUTOHSCROLL: 0x80, NOHIDESEL: 0x100,
                      READONLY: 0x800, WANTRETURN: 0x1000, SAVESEL: 0x8000, SELECTIONBAR: 0x01000000,
@@ -509,10 +508,10 @@ Class RichEdit {
       Return O
    }
    ; -------------------------------------------------------------------------------------------------------------------.
-   GetStyles(&Styles := "") { ; Retrieves the current edit style flags
-      ; Returns an object containing keys as defined in 'SES'.
-      ; If a variable is passed in the Styles parameter, the combined numeric value of the styles will be stored in it.
-      ; For details see http://msdn.microsoft.com/en-us/library/bb788031(v=vs.85).aspx.
+   GetStyles(&Styles := "") { ; 检索当前编辑样式标志
+      ; 返回一个包含 'SES' 中定义的键的对象。
+      ; 如果在 Styles 参数中传递变量，则样式的组合数值将存储在其中。
+      ; 有关详细信息，请参阅 http://msdn.microsoft.com/en-us/library/bb788031(v=vs.85).aspx。
       ; EM_GETEDITSTYLE	= 0x04CD (WM_USER + 205)
       Static SES := {1: "EMULATESYSEDIT", 1: "BEEPONMAXTEXT", 4: "EXTENDBACKCOLOR", 32: "NOXLTSYMBOLRANGE",
                      64: "USEAIMM", 128: "NOIME", 256: "ALLOWBEEPS", 512: "UPPERCASE", 1024: "LOWERCASE",
@@ -528,8 +527,8 @@ Class RichEdit {
       Return S
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetZoom() { ; Gets the current zoom ratio
-      ; Returns the zoom ratio in percent.
+   GetZoom() { ; 获取当前缩放比例
+      ; 返回百分比形式的缩放比例。
       ; EM_GETZOOM = 0x04E0
       N := Buffer(4, 0), D := Buffer(4, 0)
       SendMessage(0x04CD, N.Ptr, D.Ptr, This.HWND)
@@ -537,10 +536,10 @@ Class RichEdit {
       Return (N = 0) && (D = 0) ? 100 : Round(N / D * 100)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetBkgndColor(Color) { ; Sets the background color
-      ; Color : RGB integer value or HTML color name or
-      ;         "Auto" to reset to system default color.
-      ; Returns the prior background color.
+   SetBkgndColor(Color) { ; 设置背景颜色
+      ; Color : RGB 整数值或 HTML 颜色名称或
+      ;         "Auto" 以重置为系统默认颜色。
+      ; 返回先前的背景颜色。
       ; EM_SETBKGNDCOLOR = 0x0443
       If (Color = "Auto")
          System := True, Color := 0
@@ -550,10 +549,10 @@ Class RichEdit {
       Return This.GetRGB(Result)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetOptions(Options, Mode := "SET") { ; Sets the options for a rich edit control
-      ; Options : Array of options as the keys defined in 'ECO'.
-      ; Mode    : Settings mode: SET, OR, AND, XOR
-      ; For details see http://msdn.microsoft.com/en-us/library/bb774254(v=vs.85).aspx.
+   SetOptions(Options, Mode := "SET") { ; 设置富编辑控件的选项
+      ; Options : 作为 'ECO' 中定义的键的选项数组。
+      ; Mode    : 设置模式: SET, OR, AND, XOR
+      ; 有关详细信息，请参阅 http://msdn.microsoft.com/en-us/library/bb774254(v=vs.85).aspx。
       ; EM_SETOPTIONS = 0x044D
       Static ECO := {AUTOWORDSELECTION: 0x01, AUTOVSCROLL: 0x40, AUTOHSCROLL: 0x80, NOHIDESEL: 0x100, READONLY: 0x800
                    , WANTRETURN: 0x1000, SAVESEL: 0x8000, SELECTIONBAR: 0x01000000, VERTICAL: 0x400000}
@@ -570,10 +569,10 @@ Class RichEdit {
       Return SendMessage(0x044D, ECOOP.%Mode%, O, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetRect(L, T, R, B) { ; Sets the formatting rectangle of a multiline edit control
-      ; L (eft), T (op), R (ight), B (ottom)
-      ; Set all parameters to zero to set it to its default values.
-      ; Returns True for multiline controls.
+   SetRect(L, T, R, B) { ; 设置多行编辑控件的格式矩形
+      ; L (左), T (上), R (右), B (下)
+      ; 将所有参数设置为零以将其设置为默认值。
+      ; 对于多行控件返回 True。
       If !This.MultiLine
          Return False
       If (L + T + R + B) = 0
@@ -586,10 +585,10 @@ Class RichEdit {
       Return True
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetStyles(Styles) { ; Sets the current edit style flags for a rich edit control.
-      ; Styles : Object containing on or more of the keys defined in 'SES'.
-      ;          If the value is 0 the style will be removed, otherwise it will be added.
-      ; For details see http://msdn.microsoft.com/en-us/library/bb774236(v=vs.85).aspx.
+   SetStyles(Styles) { ; 设置富编辑控件的当前编辑样式标志。
+      ; Styles : 包含 'SES' 中定义的一个或多个键的对象。
+      ;          如果值为 0，则样式将被删除，否则将被添加。
+      ; 有关详细信息，请参阅 http://msdn.microsoft.com/en-us/library/bb774236(v=vs.85).aspx。
       ; EM_SETEDITSTYLE	= 0x04CC (WM_USER + 204)
       Static SES := {EMULATESYSEDIT: 1, BEEPONMAXTEXT: 2, EXTENDBACKCOLOR: 4, NOXLTSYMBOLRANGE: 32, USEAIMM: 64,
                      NOIME: 128, ALLOWBEEPS: 256, UPPERCASE: 512, LOWERCASE: 1024, NOINPUTSEQUENCECHK: 2048,
@@ -610,73 +609,73 @@ Class RichEdit {
       Return Mask ? SendMessage(0x04CC, Flags, Mask, This.HWND) : False
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetZoom(Ratio := "") { ; Sets the zoom ratio of a rich edit control.
-      ; Ratio : Float value between 100/64 and 6400; a ratio of 0 turns zooming off.
+   SetZoom(Ratio := "") { ; 设置富编辑控件的缩放比例。
+      ; Ratio : 介于 100/64 和 6400 之间的浮点值；比率为 0 时关闭缩放。
       ; EM_SETZOOM = 0x4E1
       Return SendMessage(0x04E1, (Ratio > 0 ? Ratio : 100), 100, This.HWND)
    }
    ; ===================================================================================================================
    ; Copy, paste, etc.
    ; ===================================================================================================================
-   CanRedo() { ; Determines whether there are any actions in the control redo queue.
+   CanRedo() { ; 确定控件的重做队列中是否有任何操作。
       ; EM_CANREDO = 0x0455 (WM_USER + 85)
       Return SendMessage(0x0455, 0, 0, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   CanUndo() { ; Determines whether there are any actions in an edit control's undo queue.
+   CanUndo() { ; 确定编辑控件的撤销队列中是否有任何操作。
       ; EM_CANUNDO = 0x00C6
       Return SendMessage(0x00C6, 0, 0, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   Clear() {
+   Clear() { ; 清除编辑控件的内容
       ; WM_CLEAR = 0x303
       Return SendMessage(0x0303, 0, 0, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   Copy() {
+   Copy() { ; 复制选定的内容到剪贴板
       ; WM_COPY = 0x301
       Return SendMessage(0x0301, 0, 0, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   Cut() {
+   Cut() { ; 剪切选定的内容到剪贴板
       ; WM_CUT = 0x300
       Return SendMessage(0x0300, 0, 0, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   Paste() {
+   Paste() { ; 从剪贴板粘贴内容
       ; WM_PASTE = 0x302
       Return SendMessage(0x0302, 0, 0, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   Redo() {
+   Redo() { ; 重做上一个操作
       ; EM_REDO := 0x454
       Return SendMessage(0x0454, 0, 0, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   Undo() {
+   Undo() { ; 撤销上一个操作
       ; EM_UNDO = 0xC7
       Return SendMessage(0x00C7, 0, 0, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SelAll() {
-      ; Select all
+   SelAll() { ; 全选
+      ; 选择所有内容
       Return This.SetSel(0, -1)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   Deselect() {
-      ; Deselect all
+   Deselect() { ; 取消选择
+      ; 取消所有选择
       Sel := This.GetSel()
       Return This.SetSel(Sel.S, Sel.S)
    }
    ; ===================================================================================================================
    ; Font & colors
    ; ===================================================================================================================
-   ChangeFontSize(Diff) { ; Change font size
-      ; Diff : any positive or negative integer, positive values are treated as +1, negative as -1.
-      ; Returns new size.
+   ChangeFontSize(Diff) { ; 更改字体大小
+      ; Diff : 任何正整数或负整数，正值被视为 +1，负值被视为 -1。
+      ; 返回新的大小。
       ; EM_SETFONTSIZE = 0x04DF
-      ; Font size changes by 1 in the range 4 - 11 pt, by 2 for 12 - 28 pt, afterward to 36 pt, 48 pt, 72 pt, 80 pt,
-      ; and by 10 for > 80 pt. The maximum value is 160 pt, the minimum is 4 pt
+      ; 字体大小在 4 - 11 pt 范围内变化 1，在 12 - 28 pt 范围内变化 2，然后到 36 pt、48 pt、72 pt、80 pt，
+      ; 对于 > 80 pt 变化 10。最大值为 160 pt，最小值为 4 pt
       Font := This.GetFont()
       If (Diff > 0 && Font.Size < 160) || (Diff < 0 && Font.Size > 4)
          SendMessage(0x04DF, (Diff > 0 ? 1 : -1), 0, This.HWND)
@@ -686,9 +685,9 @@ Class RichEdit {
       Return Font.Size
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetFont(Default := False) { ; Get current font
-      ; Set Default to True to get the default font.
-      ; Returns an object containing current options (see SetFont())
+   GetFont(Default := False) { ; 获取当前字体
+      ; 将 Default 设置为 True 以获取默认字体。
+      ; 返回包含当前选项的对象（请参阅 SetFont()）
       ; EM_GETCHARFORMAT = 0x043A
       ; BOLD_FONTTYPE = 0x0100, ITALIC_FONTTYPE = 0x0200
       ; CFM_BOLD = 1, CFM_ITALIC = 2, CFM_UNDERLINE = 4, CFM_STRIKEOUT = 8, CFM_PROTECTED = 16, CFM_SUBSCRIPT = 0x30000
@@ -722,8 +721,8 @@ Class RichEdit {
       Return Font
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetDefaultFont(Font := "") { ; Set default font
-      ; Font : Optional object - see SetFont().
+   SetDefaultFont(Font := "") { ; 设置默认字体
+      ; Font : 可选对象 - 请参阅 SetFont()。
       If IsObject(Font) {
          For Key, Value In Font.OwnProps()
             If This.DefFont.HasProp(Key)
@@ -732,20 +731,20 @@ Class RichEdit {
       Return This.SetFont(This.DefFont)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetFont(Font) { ; Set current/default font
-      ; Font : Object containing the following keys
-      ;        Name    : optional font name
-      ;        Size    : optional font size in points
-      ;        Style   : optional string of one or more of the following styles
-      ;                  B = bold, I = italic, U = underline, S = strikeout, L = subscript
-      ;                  H = superschript, P = protected, N = normal
-      ;        Color   : optional text color as RGB integer value or HTML color name
-      ;                  "Auto" for "automatic" (system's default) color
-      ;        BkColor : optional text background color (see Color)
-      ;                  "Auto" for "automatic" (system's default) background color
-      ;        CharSet : optional font character set
+   SetFont(Font) { ; 设置当前/默认字体
+      ; Font : 包含以下键的对象
+      ;        Name    : 可选的字体名称
+      ;        Size    : 可选的字体大小（以磅为单位）
+      ;        Style   : 可选的字符串，包含以下一种或多种样式
+      ;                  B = 粗体, I = 斜体, U = 下划线, S = 删除线, L = 下标
+      ;                  H = 上标, P = 受保护, N = 正常
+      ;        Color   : 可选的文本颜色，作为 RGB 整数值或 HTML 颜色名称
+      ;                  "Auto" 表示 "自动"（系统默认）颜色
+      ;        BkColor : 可选的文本背景颜色（请参阅 Color）
+      ;                  "Auto" 表示 "自动"（系统默认）背景颜色
+      ;        CharSet : 可选的字体字符集
       ;                  1 = DEFAULT_CHARSET, 2 = SYMBOL_CHARSET
-      ;        Empty parameters preserve the corresponding properties
+      ;        空参数保留相应的属性
       ; EM_SETCHARFORMAT = 0x0444
       ; SCF_DEFAULT = 0, SCF_SELECTION = 1
       If (Type(Font) != "Object")
@@ -807,10 +806,10 @@ Class RichEdit {
       Return False
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetFontStyles(Styles, Default := False) { ; Set the font styles for the current selection or the default font
-      ; Styles : a string containing one or more of the following styles
-      ;          B = bold, I = italic, U = underline, S = strikeout, L = subscript, H = superschript, P = protected,
-      ;          N = normal (reset all other styles)
+   SetFontStyles(Styles, Default := False) { ; 为当前选择或默认字体设置字体样式
+      ; Styles : 包含以下一种或多种样式的字符串
+      ;          B = 粗体, I = 斜体, U = 下划线, S = 删除线, L = 下标, H = 上标, P = 受保护,
+      ;          N = 正常（重置所有其他样式）
       ; EM_GETCHARFORMAT = 0x043A, EM_SETCHARFORMAT = 0x0444
       ; CFM_BOLD = 1, CFM_ITALIC = 2, CFM_UNDERLINE = 4, CFM_STRIKEOUT = 8, CFM_PROTECTED = 16, CFM_SUxSCRIPT = 0x30000
       ; CFE_SUBSCRIPT = 0x10000, CFE_SUPERSCRIPT = 0x20000, SCF_SELECTION = 1
@@ -825,10 +824,10 @@ Class RichEdit {
       Return SendMessage(0x0444, !Default, CF2.Ptr, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   ToggleFontStyle(Style) { ; Toggle single font style
-      ; Style : one of the following styles
-      ;         B = bold, I = italic, U = underline, S = strikeout, L = subscript, H = superschript, P = protected,
-      ;         N = normal (reset all other styles)
+   ToggleFontStyle(Style) { ; 切换单个字体样式
+      ; Style : 以下样式之一
+      ;         B = 粗体, I = 斜体, U = 下划线, S = 删除线, L = 下标, H = 上标, P = 受保护,
+      ;         N = 正常（重置所有其他样式）
       ; EM_GETCHARFORMAT = 0x043A, EM_SETCHARFORMAT = 0x0444
       ; CFM_BOLD = 1, CFM_ITALIC = 2, CFM_UNDERLINE = 4, CFM_STRIKEOUT = 8, CFM_PROTECTED = 16, CFM_SUBSCRIPT = 0x30000
       ; CFE_SUBSCRIPT = 0x10000, CFE_SUPERSCRIPT = 0x20000, SCF_SELECTION = 1
@@ -846,15 +845,15 @@ Class RichEdit {
    ; ===================================================================================================================
    ; Paragraph formatting
    ; ===================================================================================================================
-   AlignText(Align := 1) { ; Set paragraph's alignment
-      ; Note:  Values greater 3 doesn't seem to work though they should as documented
-      ; Align: may contain one of the following numbers:
+   AlignText(Align := 1) { ; 设置段落对齐方式
+      ; 注意: 大于 3 的值似乎不起作用，尽管它们在文档中应该有效
+      ; Align: 可以包含以下数字之一:
       ;        PFA_LEFT             1
       ;        PFA_RIGHT            2
       ;        PFA_CENTER           3
-      ;        PFA_JUSTIFY          4 // New paragraph-alignment option 2.0 (*)
-      ;        PFA_FULL_INTERWORD   4 // These are supported in 3.0 with advanced
-      ;        PFA_FULL_INTERLETTER 5 // typography enabled
+      ;        PFA_JUSTIFY          4 // 新的段落对齐选项 2.0 (*)
+      ;        PFA_FULL_INTERWORD   4 // 这些在 3.0 中支持高级
+      ;        PFA_FULL_INTERLETTER 5 // 排版功能启用
       ;        PFA_FULL_SCALED      6
       ;        PFA_FULL_GLYPHS      7
       ;        PFA_SNAP_GRID        8
@@ -872,25 +871,25 @@ Class RichEdit {
       Return False
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetBorder(Widths, Styles) { ; Set paragraph's borders
-      ; Borders are not displayed in RichEdit, so the call of this function has no visible result.
-      ; Even WordPad distributed with Win7 does not show them, but e.g. Word 2007 does.
-      ; Widths : Array of the 4 border widths in the range of 1 - 15 in order left, top, right, bottom; zero = no border
-      ; Styles : Array of the 4 border styles in the range of 0 - 7 in order left, top, right, bottom (see remarks)
-      ; Note:
-      ; The description on MSDN at http://msdn.microsoft.com/en-us/library/bb787942(v=vs.85).aspx is wrong!
-      ; To set borders you have to put the border width into the related nibble (4 Bits) of wBorderWidth
-      ; (in order: left (0 - 3), top (4 - 7), right (8 - 11), and bottom (12 - 15). The values are interpreted as
-      ; half points (i.e. 10 twips). Border styles are set in the related nibbles of wBorders.
-      ; Valid styles seem to be:
-      ;     0 : \brdrdash (dashes)
-      ;     1 : \brdrdashsm (small dashes)
-      ;     2 : \brdrdb (double line)
-      ;     3 : \brdrdot (dotted line)
-      ;     4 : \brdrhair (single/hair line)
-      ;     5 : \brdrs ? looks like 3
-      ;     6 : \brdrth ? looks like 3
-      ;     7 : \brdrtriple (triple line)
+   SetBorder(Widths, Styles) { ; 设置段落边框
+      ; 边框在 RichEdit 中不显示，因此调用此函数没有可见结果。
+      ; 即使是 Win7 随附的 WordPad 也不显示它们，但例如 Word 2007 会显示。
+      ; Widths : 4 个边框宽度的数组，范围为 1 - 15，顺序为左、上、右、下；0 = 无边框
+      ; Styles : 4 个边框样式的数组，范围为 0 - 7，顺序为左、上、右、下（见备注）
+      ; 注意:
+      ; MSDN 上 http://msdn.microsoft.com/en-us/library/bb787942(v=vs.85).aspx 的描述是错误的！
+      ; 要设置边框，必须将边框宽度放入 wBorderWidth 的相关半字节（4 位）中
+      ; （顺序：左 (0 - 3)、上 (4 - 7)、右 (8 - 11) 和下 (12 - 15)。这些值被解释为
+      ; 半点（即 10 缇）。边框样式设置在 wBorders 的相关半字节中。
+      ; 有效的样式似乎是:
+      ;     0 : \brdrdash (虚线)
+      ;     1 : \brdrdashsm (小虚线)
+      ;     2 : \brdrdb (双线)
+      ;     3 : \brdrdot (点线)
+      ;     4 : \brdrhair (单线/发丝线)
+      ;     5 : \brdrs ? 看起来像 3
+      ;     6 : \brdrth ? 看起来像 3
+      ;     7 : \brdrtriple (三线)
       ; EM_SETPARAFORMAT = 0x0447, PFM_BORDER = 0x800
       If (Type(Widths) != "Array") ||  (Type(Styles) != "Array") || (Widths.Length != 4) || (Styles.Length != 4)
          Return False
@@ -908,11 +907,11 @@ Class RichEdit {
       Return SendMessage(0x0447, 0, PF2.Ptr, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetLineSpacing(Lines) { ; Sets paragraph's line spacing.
-      ; Lines : number of lines as integer or float.
+   SetLineSpacing(Lines) { ; 设置段落的行间距。
+      ; Lines : 行数，可以是整数或浮点数。
       ; SpacingRule = 5:
-      ; The value of dyLineSpacing / 20 is the spacing, in lines, from one line to the next. Thus, setting
-      ; dyLineSpacing to 20 produces single-spaced text, 40 is double spaced, 60 is triple spaced, and so on.
+      ; dyLineSpacing / 20 的值是行与行之间的间距（以行为单位）。因此，将
+      ; dyLineSpacing 设置为 20 会产生单倍行距的文本，40 是双倍行距，60 是三倍行距，依此类推。
       ; EM_SETPARAFORMAT = 0x0447, PFM_LINESPACING = 0x100
       PF2 := RichEdit.PARAFORMAT2()
       PF2.Mask := 0x100
@@ -921,14 +920,13 @@ Class RichEdit {
       Return SendMessage(0x0447, 0, PF2.Ptr, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetParaIndent(Indent := "Reset") { ; Sets space left/right of the paragraph.
-      ; Indent : Object containing up to three keys:
-      ;          - Start  : Optional - Absolute indentation of the paragraph's first line.
-      ;          - Right  : Optional - Indentation of the right side of the paragraph, relative to the right margin.
-      ;          - Offset : Optional - Indentation of the second and subsequent lines, relative to the indentation
-      ;                                of the first line.
-      ;          Values are interpreted as centimeters/inches depending on the user's locale measurement settings.
-      ;          Call without passing a parameter to reset indentation.
+   SetParaIndent(Indent := "Reset") { ; 设置段落的左右间距。
+      ; Indent : 包含最多三个键的对象:
+      ;          - Start  : 可选 - 段落第一行的绝对缩进。
+      ;          - Right  : 可选 - 段落右侧相对于右边距的缩进。
+      ;          - Offset : 可选 - 第二行及后续行相对于第一行缩进的缩进量。
+      ;          值根据用户的区域设置测量单位（厘米/英寸）进行解释。
+      ;          不传递参数调用可重置缩进。
       ; EM_SETPARAFORMAT = 0x0447
       ; PFM_STARTINDENT  = 0x0001
       ; PFM_RIGHTINDENT  = 0x0002
@@ -961,28 +959,28 @@ Class RichEdit {
    }
    ; -------------------------------------------------------------------------------------------------------------------
    SetParaNumbering(Numbering := "Reset") {
-      ; Numbering : Object containing up to four keys:
-      ;             - Type  : Options used for bulleted or numbered paragraphs.
-      ;             - Style : Optional - Numbering style used with numbered paragraphs.
-      ;             - Tab   : Optional - Minimum space between a paragraph number and the paragraph text.
-      ;             - Start : Optional - Sequence number used for numbered paragraphs (e.g. 3 for C or III)
-      ;             Tab is interpreted as centimeters/inches depending on the user's locale measurement settings.
-      ;             Call without passing a parameter to reset numbering.
+      ; Numbering : 包含最多四个键的对象:
+      ;             - Type  : 用于项目符号或编号段落的选项。
+      ;             - Style : 可选 - 用于编号段落的编号样式。
+      ;             - Tab   : 可选 - 段落编号与段落文本之间的最小间距。
+      ;             - Start : 可选 - 用于编号段落的序列号（例如，3 表示 C 或 III）
+      ;             Tab 根据用户的区域设置测量单位（厘米/英寸）进行解释。
+      ;             不传递参数调用可重置编号。
       ; EM_SETPARAFORMAT = 0x0447
-      ; PARAFORMAT numbering options
-      ; PFN_BULLET   1 ; tomListBullet
-      ; PFN_ARABIC   2 ; tomListNumberAsArabic:   0, 1, 2,	...
-      ; PFN_LCLETTER 3 ; tomListNumberAsLCLetter: a, b, c,	...
-      ; PFN_UCLETTER 4 ; tomListNumberAsUCLetter: A, B, C,	...
-      ; PFN_LCROMAN  5 ; tomListNumberAsLCRoman:  i, ii, iii,	...
-      ; PFN_UCROMAN  6 ; tomListNumberAsUCRoman:  I, II, III,	...
-      ; PARAFORMAT2 wNumberingStyle options
-      ; PFNS_PAREN     0x0000 ; default, e.g.,                 1)
-      ; PFNS_PARENS    0x0100 ; tomListParentheses/256, e.g., (1)
-      ; PFNS_PERIOD    0x0200 ; tomListPeriod/256, e.g.,       1.
-      ; PFNS_PLAIN     0x0300 ; tomListPlain/256, e.g.,        1
-      ; PFNS_NONUMBER  0x0400 ; used for continuation w/o number
-      ; PFNS_NEWNUMBER 0x8000 ; start new number with wNumberingStart
+      ; PARAFORMAT 编号选项
+      ; PFN_BULLET   1 ; 项目符号
+      ; PFN_ARABIC   2 ; 阿拉伯数字:   0, 1, 2,	...
+      ; PFN_LCLETTER 3 ; 小写字母: a, b, c,	...
+      ; PFN_UCLETTER 4 ; 大写字母: A, B, C,	...
+      ; PFN_LCROMAN  5 ; 小写罗马数字:  i, ii, iii,	...
+      ; PFN_UCROMAN  6 ; 大写罗马数字:  I, II, III,	...
+      ; PARAFORMAT2 编号样式选项
+      ; PFNS_PAREN     0x0000 ; 默认, 例如,                 1)
+      ; PFNS_PARENS    0x0100 ; 带括号, 例如, (1)
+      ; PFNS_PERIOD    0x0200 ; 带句点, 例如,       1.
+      ; PFNS_PLAIN     0x0300 ; 纯数字, 例如,        1
+      ; PFNS_NONUMBER  0x0400 ; 用于无编号的继续
+      ; PFNS_NEWNUMBER 0x8000 ; 以 wNumberingStart 开始新编号
       ; PFM_NUMBERING      0x0020
       ; PFM_NUMBERINGSTYLE 0x2000
       ; PFM_NUMBERINGTAB   0x4000
@@ -1018,11 +1016,11 @@ Class RichEdit {
       Return False
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetParaSpacing(Spacing := "Reset") { ; Set space before / after the paragraph
-      ; Spacing : Object containing one or two keys:
-      ;           - Before : additional space before the paragraph in points
-      ;           - After  : additional space after the paragraph in points
-      ;           Call without passing a parameter to reset spacing to zero.
+   SetParaSpacing(Spacing := "Reset") { ; 设置段落前后的间距
+      ; Spacing : 包含一个或两个键的对象:
+      ;           - Before : 段落前的额外间距（以点为单位）
+      ;           - After  : 段落后的额外间距（以点为单位）
+      ;           不传递参数调用可将间距重置为零。
       ; EM_SETPARAFORMAT = 0x0447
       ; PFM_SPACEBEFORE  = 0x0040
       ; PFM_SPACEAFTER   = 0x0080
@@ -1047,12 +1045,12 @@ Class RichEdit {
       Return False
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetDefaultTabs(Distance) { ; Set default tabstops
-      ; Distance will be interpreted as inches or centimeters depending on the current user's locale.
+   SetDefaultTabs(Distance) { ; 设置默认制表位
+      ; 距离将根据当前用户的区域设置解释为英寸或厘米。
       ; EM_SETTABSTOPS = 0xCB
-      Static DUI := 64      ; dialog units per inch
-           , MinTab := 0.20 ; minimal tab distance
-           , MaxTab := 3.00 ; maximal tab distance
+      Static DUI := 64      ; 每英寸的对话框单位
+           , MinTab := 0.20 ; 最小制表位距离
+           , MaxTab := 3.00 ; 最大制表位距离
       IM := This.GetMeasurement()
       Distance := StrReplace(Distance, ",", ".")
       Distance := Round(Distance / IM, 2)
@@ -1067,18 +1065,18 @@ Class RichEdit {
       Return Result
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SetTabStops(TabStops := "Reset") { ; Set paragraph's tabstobs
-      ; TabStops is an object containing the integer position as hundredth of inches/centimeters as keys
-      ; and the alignment ("L", "C", "R", or "D") as values.
-      ; The position will be interpreted as hundredth of inches or centimeters depending on the current user's locale.
-      ; Call without passing a  parameter to reset to default tabs.
+   SetTabStops(TabStops := "Reset") { ; 设置段落的制表位
+      ; TabStops 是一个对象，其中包含以百分之一英寸/厘米为单位的整数位置作为键
+      ; 以及对齐方式（"L"、"C"、"R" 或 "D"）作为值。
+      ; 位置将根据当前用户的区域设置解释为百分之一英寸或厘米。
+      ; 不传递参数调用可重置为默认制表位。
       ; EM_SETPARAFORMAT = 0x0447, PFM_TABSTOPS = 0x10
-      Static MinT := 30                ; minimal tabstop in hundredth of inches
-      Static MaxT := 830               ; maximal tabstop in hundredth of inches
-      Static Align := {L: 0x00000000   ; left aligned (default)
-                     , C: 0x01000000   ; centered
-                     , R: 0x02000000   ; right aligned
-                     , D: 0x03000000}  ; decimal tabstop
+      Static MinT := 30                ; 最小制表位 (百分之一英寸)
+      Static MaxT := 830               ; 最大制表位 (百分之一英寸)
+      Static Align := {L: 0x00000000   ; 左对齐 (默认)
+                     , C: 0x01000000   ; 居中对齐
+                     , R: 0x02000000   ; 右对齐
+                     , D: 0x03000000}  ; 小数点对齐
       Static MAX_TAB_STOPS := 32
       IC := This.GetMeasurement()
       PF2 := RichEdit.PARAFORMAT2()
@@ -1102,30 +1100,30 @@ Class RichEdit {
       Return False
    }
    ; ===================================================================================================================
-   ; Line handling
+   ; 行处理
    ; ===================================================================================================================
-   GetCaretLine() { ; Get the line containing the caret
+   GetCaretLine() { ; 获取包含插入点的行
       ; EM_LINEINDEX = 0xBB, EM_EXLINEFROMCHAR = 0x0436
       Result := SendMessage(0x00BB, -1, 0, This.HWND)
       Return SendMessage(0x0436, 0, Result, This.HWND) + 1
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetLineCount() { ; Get the total number of lines
+   GetLineCount() { ; 获取总行数
       ; EM_GETLINECOUNT = 0xBA
       Return SendMessage(0x00BA, 0, 0, This.HWND)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetLineIndex(LineNumber) { ; Get the index of the first character of the specified line.
+   GetLineIndex(LineNumber) { ; 获取指定行第一个字符的索引。
       ; EM_LINEINDEX := 0x00BB
-      ; LineNumber   -  zero-based line number
+      ; LineNumber   -  从零开始的行号
       Return SendMessage(0x00BB, LineNumber, 0, This.HWND)
    }
    ; ===================================================================================================================
    ; Statistics
    ; ===================================================================================================================
-   GetStatistics() { ; Get some statistic values
-      ; Get the line containing the caret, it's position in this line, the total amount of lines, the absulute caret
-      ; position and the total amount of characters.
+   GetStatistics() { ; 获取一些统计值
+      ; 获取包含插入点的行、插入点在该行中的位置、总行数、绝对插入点
+      ; 位置和字符总数。
       ; EM_GETSEL = 0xB0, EM_LINEFROMCHAR = 0xC9, EM_LINEINDEX = 0xBB, EM_GETLINECOUNT = 0xBA
       Stats := {}
       SB := Buffer(A_PtrSize, 0)
@@ -1138,9 +1136,9 @@ Class RichEdit {
       Return Stats
    }
    ; ===================================================================================================================
-   ; Layout
+   ; 布局
    ; ===================================================================================================================
-   WordWrap(On) { ; Turn wordwrapping on/off
+   WordWrap(On) { ; 打开/关闭自动换行
       ; EM_SCROLLCARET = 0xB7
       Sel := This.GetSel()
       SendMessage(0x0448, 0, On ? 0 : -1, This.HWND)
@@ -1149,9 +1147,9 @@ Class RichEdit {
       Return On
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   WYSIWYG(On) { ; Show control as printed (WYSIWYG)
-      ; Text measuring is based on the default printer's capacities, thus changing the printer may produce different
-      ; results. See remarks/comments in Print() also.
+   WYSIWYG(On) { ; 显示控件如同打印效果（所见即所得）
+      ; 文本测量基于默认打印机的容量，因此更改打印机可能会产生不同的
+      ; 结果。另请参阅 Print() 中的备注/评论。
       ; EM_SCROLLCARET = 0xB7, EM_SETTARGETDEVICE = 0x0448
       ; PD_RETURNDC = 0x0100, PD_RETURNDEFAULT = 0x0400
       Static PDC := 0
@@ -1177,13 +1175,13 @@ Class RichEdit {
       PDC := NumGet(PD, A_PtrSize * 4, "UPtr")
       DllCall("LockWindowUpdate", "Ptr", This.HWND)
       Caps := This.GetPrinterCaps(PDC)
-      ; Set up page size and margins in pixel
-      UML := This.Margins.LT                   ; user margin left
-      UMR := This.Margins.RT                   ; user margin right
-      PML := Caps.POFX                         ; physical margin left
-      PMR := Caps.PHYW - Caps.HRES - Caps.POFX ; physical margin right
-      LPW := Caps.HRES                         ; logical page width
-      ; Adjust margins
+      ; 设置页面大小和像素边距
+      UML := This.Margins.LT                   ; 用户左边距
+      UMR := This.Margins.RT                   ; 用户右边距
+      PML := Caps.POFX                         ; 物理左边距
+      PMR := Caps.PHYW - Caps.HRES - Caps.POFX ; 物理右边距
+      LPW := Caps.HRES                         ; 逻辑页面宽度
+      ; 调整边距
       UML := UML > PML ? (UML - PML) : 0
       UMR := UMR > PMR ? (UMR - PMR) : 0
       LineLen := LPW - UML - UMR
@@ -1194,14 +1192,14 @@ Class RichEdit {
       Return True
    }
    ; ===================================================================================================================
-   ; File handling
+   ; 文件处理
    ; ===================================================================================================================
-   LoadFile(File, Mode := "Open") { ; Load file
-      ; File : file name
+   LoadFile(File, Mode := "Open") { ; 加载文件
+      ; File : 文件名
       ; Mode : Open / Add / Insert
-      ;        Open   : Replace control's content
-      ;        Append : Append to conrol's content
-      ;        Insert : Insert at / replace current selection
+      ;        Open   : 替换控件内容
+      ;        Append : 追加到控件内容
+      ;        Insert : 在当前选择处插入/替换
       If !FileExist(File)
          Return False
       Ext := ""
@@ -1233,9 +1231,9 @@ Class RichEdit {
       Return True
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   SaveFile(File) { ; Save file
-      ; File : file name
-      ; Returns True on success, otherwise False.
+   SaveFile(File) { ; 保存文件
+      ; File : 文件名
+      ; 成功时返回 True，否则返回 False。
       This.Gui.Opt("+OwnDialogs")
       Ext := ""
       SplitPath(File, , , &Ext)
@@ -1252,13 +1250,13 @@ Class RichEdit {
       }
    }
    ; ===================================================================================================================
-   ; Printing
-   ; THX jballi ->  http://www.autohotkey.com/board/topic/45513-function-he-print-wysiwyg-print-for-the-hiedit-control/
+   ; 打印
+   ; 感谢 jballi ->  http://www.autohotkey.com/board/topic/45513-function-he-print-wysiwyg-print-for-the-hiedit-control/
    ; ===================================================================================================================
    Print() {
       ; EM_FORMATRANGE = 0x0439, EM_SETTARGETDEVICE = 0x0448
       ; ----------------------------------------------------------------------------------------------------------------
-      ; Static variables
+      ; 静态变量
       Static PD_ALLPAGES := 0x00, PD_SELECTION := 0x01, PD_PAGENUMS := 0x02, PD_NOSELECTION := 0x04
            , PD_RETURNDC := 0x0100, PD_USEDEVMODECOPIES := 0x040000, PD_HIDEPRINTTOFILE := 0x100000
            , PD_NONETWORKBUTTON := 0x200000, PD_NOCURRENTPAGE := 0x800000
@@ -1267,14 +1265,14 @@ Class RichEdit {
            , PD_Size := (A_PtrSize = 8 ? (13 * A_PtrSize) + 16 : 66)
       ErrorMsg := ""
       ; ----------------------------------------------------------------------------------------------------------------
-      ; Prepare to call PrintDlg
-      ; Define/Populate the PRINTDLG structure
+      ; 准备调用 PrintDlg
+      ; 定义/填充 PRINTDLG 结构
       PD := Buffer(PD_Size, 0)
       Numput("UInt", PD_Size, PD)  ; lStructSize
       Numput("UPtr", This.Gui.Hwnd, PD, A_PtrSize) ; hwndOwner
-      ; Collect Start/End select positions
+      ; 收集开始/结束选择位置
       Sel := This.GetSel()
-      ; Determine/Set Flags
+      ; 确定/设置标志
       Flags := PD_ALLPAGES | PD_RETURNDC | PD_USEDEVMODECOPIES | PD_HIDEPRINTTOFILE | PD_NONETWORKBUTTON
              | PD_NOCURRENTPAGE
       If (Sel.S = Sel.E)
@@ -1284,195 +1282,208 @@ Class RichEdit {
       Offset := A_PtrSize * 5
       ; Flags, pages, and copies
       NumPut("UInt", Flags, "UShort", 1, "UShort", 1, "UShort", 1, "UShort", -1, "UShort", 1, PD, Offset)
-      ; Note: Use -1 to specify the maximum page number (65535).
-      ; Programming note: The values that are loaded to these fields are critical. The Print dialog will not
-      ; display (returns an error) if unexpected values are loaded to one or more of these fields.
+      ; 注意：使用 -1 来指定最大页码 (65535)。
+      ; 编程注意：加载到这些字段的值是关键的。如果将意外的值加载到一个或多个这些字段，打印对话框将不会
+      ; 显示（返回错误）。
       ; ----------------------------------------------------------------------------------------------------------------
-      ; Print dialog box
-      ; Open the Print dialog.  Bounce If the user cancels.
+      ; 打印对话框
+      ; 打开打印对话框。如果用户取消，则退出。
       If !DllCall("Comdlg32.dll\PrintDlg", "Ptr", PD, "UInt")
          Throw Error("Function: " . A_ThisFunc . " - DLLCall of 'PrintDlg' failed.", -1)
-      ; Get the printer device context.  Bounce If not defined.
+      ; 获取打印机设备上下文。如果未定义则退出。
       If !(PDC := NumGet(PD, A_PtrSize * 4, "UPtr")) ; hDC
-         Throw Error("Function: " . A_ThisFunc . " - Couldn't get a printer's device context.", -1)
-      ; Free global structures created by PrintDlg
+         Throw Error("Function: " . A_ThisFunc . " - 无法获取打印机的设备上下文。", -1)
+      ; 释放由 PrintDlg 创建的全局结构
       DllCall("GlobalFree", "Ptr", NumGet(PD, A_PtrSize * 2, "UPtr"))
       DllCall("GlobalFree", "Ptr", NumGet(PD, A_PtrSize * 3, "UPtr"))
       ; ----------------------------------------------------------------------------------------------------------------
-      ; Prepare to print
-      ; Collect Flags
+      ; 准备打印
+      ; 收集标志
       Offset := A_PtrSize * 5
-      Flags := NumGet(PD, OffSet, "UInt")           ; Flags
-      ; Determine From/To Page
+      Flags := NumGet(PD, OffSet, "UInt")           ; 标志
+      ; 确定起始/结束页码
       If (Flags & PD_PAGENUMS) {
-         PageF := NumGet(PD, Offset += 4, "UShort") ; nFromPage (first page)
-         PageL := NumGet(PD, Offset += 2, "UShort") ; nToPage (last page)
+         PageF := NumGet(PD, Offset += 4, "UShort") ; 起始页
+         PageL := NumGet(PD, Offset += 2, "UShort") ; 结束页
       }
       Else
          PageF := 1, PageL := 65535
-      ; Collect printer capacities
+      ; 收集打印机容量
       Caps := This.GetPrinterCaps(PDC)
-      ; Set up page size and margins in Twips (1/20 point or 1/1440 of an inch)
-      UML := This.Margins.LT                   ; user margin left
-      UMT := This.Margins.TT                   ; user margin top
-      UMR := This.Margins.RT                   ; user margin right
-      UMB := This.Margins.BT                   ; user margin bottom
-      PML := Caps.POFX                         ; physical margin left
-      PMT := Caps.POFY                         ; physical margin top
-      PMR := Caps.PHYW - Caps.HRES - Caps.POFX ; physical margin right
-      PMB := Caps.PHYH - Caps.VRES - Caps.POFY ; physical margin bottom
-      LPW := Caps.HRES                         ; logical page width
-      LPH := Caps.VRES                         ; logical page height
-      ; Adjust margins
+      ; 设置页面大小和边距（以缇为单位，1/20 点或 1/1440 英寸）
+      UML := This.Margins.LT                   ; 用户左边距
+      UMT := This.Margins.TT                   ; 用户上边距
+      UMR := This.Margins.RT                   ; 用户右边距
+      UMB := This.Margins.BT                   ; 用户下边距
+      PML := Caps.POFX                         ; 物理左边距
+      PMT := Caps.POFY                         ; 物理上边距
+      PMR := Caps.PHYW - Caps.HRES - Caps.POFX ; 物理右边距
+      PMB := Caps.PHYH - Caps.VRES - Caps.POFY ; 物理下边距
+      LPW := Caps.HRES                         ; 逻辑页面宽度
+      LPH := Caps.VRES                         ; 逻辑页面高度
+      ; 调整边距
       UML := UML > PML ? (UML - PML) : 0
       UMT := UMT > PMT ? (UMT - PMT) : 0
       UMR := UMR > PMR ? (UMR - PMR) : 0
       UMB := UMB > PMB ? (UMB - PMB) : 0
-      ; Define/Populate the FORMATRANGE structure
+      ; 定义/填充 FORMATRANGE 结构
       FR := Buffer((A_PtrSize * 2) + (4 * 10), 0)
       NumPut("UPtr", PDC, "UPtr", PDC, FR) ; hdc , hdcTarget
-      ; Define FORMATRANGE.rc
-      ; rc is the area to render to (rcPage - margins), measured in twips (1/20 point or 1/1440 of an inch).
-      ; If the user-defined margins are smaller than the printer's margins (the unprintable areas at the edges
-      ; of each page), the user margins are set to the printer's margins. In addition, the user-defined margins
-      ; must be adjusted to account for the printer's margins.
-      ; For example: If the user requests a 3/4 inch (19.05 mm) left margin but the printer's left margin is
-      ; 1/4 inch (6.35 mm), rc.Left is set to 720 twips (1/2 inch or 12.7 mm).
+      ; 定义 FORMATRANGE.rc
+      ; rc 是要渲染的区域 (rcPage - 边距)，以缇为单位（1/20 点或 1/1440 英寸）。
+      ; 如果用户定义的边距小于打印机的边距（每页边缘的不可打印区域），则用户边距设置为打印机的边距。此外，用户定义的边距
+      ; 必须调整以考虑打印机的边距。
+      ; 例如：如果用户要求 3/4 英寸 (19.05 毫米) 的左边距，但打印机的左边距是
+      ; 1/4 英寸 (6.35 毫米)，则 rc.Left 设置为 720 缇 (1/2 英寸或 12.7 毫米)。
       Offset := A_PtrSize * 2
       NumPut("Int", UML, "Int", UMT, "Int", LPW - UMR, "Int", LPH - UMB, FR, Offset)
-      ; Define FORMATRANGE.rcPage
-      ; rcPage is the entire area of a page on the rendering device, measured in twips (1/20 point or 1/1440 of an inch)
-      ; Note: rc defines the maximum printable area which does not include the printer's margins (the unprintable areas
-      ; at the edges of the page). The unprintable areas are represented by PHYSICALOFFSETX and PHYSICALOFFSETY.
+      ; 定义 FORMATRANGE.rcPage
+      ; rcPage 是渲染设备上一页的整个区域，以缇为单位（1/20 点或 1/1440 英寸）
+      ; 注意：rc 定义了最大可打印区域，不包括打印机的边距（页面边缘的不可打印区域）。不可打印区域由 PHYSICALOFFSETX 和 PHYSICALOFFSETY 表示。
       Offset += 16
       NumPut("Int", 0, "Int", 0, "Int", LPW, "Int", LPH, FR, Offset)
-      ; Determine print range.
-      ; If "Selection" option is chosen, use selected text, otherwise use the entire document.
+      ; 确定打印范围。
+      ; 如果选择了"选择"选项，则使用选定的文本，否则使用整个文档。
       If (Flags & PD_SELECTION)
          PrintS := Sel.S, PrintE := Sel.E
       Else
-         PrintS := 0, PrintE := -1            ; (-1 = Select All)
+         PrintS := 0, PrintE := -1            ; (-1 = 全选)
       Offset += 16
       Numput("Int", PrintS, "Int", PrintE, FR, OffSet) ; cr.cpMin , cr.cpMax
-      ; Define/Populate the DOCINFO structure
+      ; 定义/填充 DOCINFO 结构
       DI := Buffer(A_PtrSize * 5, 0)
       NumPut("UPtr", A_PtrSize * 5, "UPtr", StrPtr(DocName), "UPtr", 0, DI) ; lpszDocName, lpszOutput
-      ; Programming note: All other DOCINFO fields intentionally left as null.
-      ; Determine MaxPrintIndex
+      ; 编程注意：所有其他 DOCINFO 字段故意保留为 null。
+      ; 确定 MaxPrintIndex
       If (Flags & PD_SELECTION)
           PrintM := Sel.E
       Else
           PrintM := This.GetTextLen()
-      ; Be sure that the printer device context is in text mode
+      ; 确保打印机设备上下文处于文本模式
       DllCall("SetMapMode", "Ptr", PDC, "Int", MM_TEXT)
       ; ----------------------------------------------------------------------------------------------------------------
-      ; Print it!
-      ; Start a print job.  Bounce If there is a problem.
+      ; 打印它！
+      ; 开始打印作业。如果有问题，请跳出。
       PrintJob := DllCall("StartDoc", "Ptr", PDC, "Ptr", DI.Ptr, "Int")
-      If (PrintJob <= 0)
-         Throw Error("Function: " . A_ThisFunc . " - DLLCall of 'StartDoc' failed.", -1)
-      ; Print page loop
-      PageC  := 0 ; current page
-      PrintC := 0 ; current print index
+        If (PrintJob <= 0)
+           Throw Error("函数: " . A_ThisFunc . " - 'StartDoc' 的 DLLCall 失败.", -1)
+        ; 打印页面循环
+        PageC  := 0 ; 当前页面
+        PrintC := 0 ; 当前打印索引
       While (PrintC < PrintM) {
-         PageC++
-         ; Are we done yet?
-         If (PageC > PageL)
-            Break
+           PageC++
+           ; 我们完成了吗？
+           If (PageC > PageL)
+              Break
+           If (PageC >= PageF) && (PageC <= PageL) {
+              ; 开始页面函数。如果有问题，请跳出。
+              If (DllCall("StartPage", "ptr", PDC, "Int") <= 0) {
+                 ErrorMsg := "函数: " . A_ThisFunc . " - 'StartPage' 的 DLLCall 失败."
+                 Break
+              }
+           }
+         ; 格式化或测量页面
+           If (PageC >= PageF) && (PageC <= PageL)
+              Render := True
+           Else
+              Render := False
+           PrintC := SendMessage(0x0439, Render, FR.Ptr, This.HWND)
          If (PageC >= PageF) && (PageC <= PageL) {
-            ; StartPage function.  Break If there is a problem.
-            If (DllCall("StartPage", "Ptr", PDC, "Int") <= 0) {
-               ErrorMsg := "Function: " . A_ThisFunc . " - DLLCall of 'StartPage' failed."
-               Break
-            }
-         }
-         ; Format or measure page
-         If (PageC >= PageF) && (PageC <= PageL)
-            Render := True
-         Else
-            Render := False
-         PrintC := SendMessage(0x0439, Render, FR.Ptr, This.HWND)
-         If (PageC >= PageF) && (PageC <= PageL) {
-            ; EndPage function. Break If there is a problem.
-            If (DllCall("EndPage", "Ptr", PDC, "Int") <= 0) {
-               ErrorMsg := "Function: " . A_ThisFunc . " - DLLCall of 'EndPage' failed."
-               Break
-            }
-         }
-         ; Update FR for the next page
-         Offset := (A_PtrSize * 2) + (4 * 8)
-         Numput("Int", PrintC, "Int", PrintE, FR, Offset) ; cr.cpMin, cr.cpMax
+              ; 结束页面函数。如果有问题，请跳出。
+              If (DllCall("EndPage", "Ptr", PDC, "Int") <= 0) {
+                 ErrorMsg := "函数: " . A_ThisFunc . " - 'EndPage' 的 DLLCall 失败."
+                 Break
+              }
+           }
+         ; 为下一页更新 FR
+           Offset := (A_PtrSize * 2) + (4 * 8)
+           Numput("Int", PrintC, "Int", PrintE, FR, Offset) ; cr.cpMin, cr.cpMax
       }
       ; ----------------------------------------------------------------------------------------------------------------
-      ; End the print job
+      ; 结束打印作业
       DllCall("EndDoc", "Ptr", PDC)
-      ; Delete the printer device context
+      ; 删除打印机设备上下文
       DllCall("DeleteDC", "Ptr", PDC)
-      ; Reset control (free cached information)
+      ; 重置控件 (释放缓存信息)
       SendMessage(0x0439, 0, 0, This.HWND)
-      ; Return to sender
+      ; 返回给调用者
       If (ErrorMsg)
          Throw Error(ErrorMsg, -1)
       Return True
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetMargins() { ; Get the default print margins
+   GetMargins() { ; 获取默认打印边距
       Static PSD_RETURNDEFAULT := 0x00000400, PSD_INTHOUSANDTHSOFINCHES := 0x00000004
-           , I := 1000 ; thousandth of inches
-           , M := 2540 ; hundredth of millimeters
+           , I := 1000 ; 千分之一英寸
+           , M := 2540 ; 百分之一毫米
            , PSD_Size := (4 * 10) + (A_PtrSize * 11)
            , PD_Size := (A_PtrSize = 8 ? (13 * A_PtrSize) + 16 : 66)
            , OffFlags := 4 * A_PtrSize
            , OffMargins := OffFlags + (4 * 7)
+      ; 检查对象是否已有 Margins 属性
       If !This.HasOwnProp("Margins") {
-         PSD := Buffer(PSD_Size, 0) ; PAGESETUPDLG structure
-         NumPut("UInt", PSD_Size, PSD)
-         NumPut("UInt", PSD_RETURNDEFAULT, PSD, OffFlags)
-         If !DllCall("Comdlg32.dll\PageSetupDlg", "Ptr", PSD, "UInt")
-            Return false
-         DllCall("GlobalFree", "UInt", NumGet(PSD, 2 * A_PtrSize, "UPtr"))
-         DllCall("GlobalFree", "UInt", NumGet(PSD, 3 * A_PtrSize, "UPtr"))
-         Flags := NumGet(PSD, OffFlags, "UInt")
-         Metrics := (Flags & PSD_INTHOUSANDTHSOFINCHES) ? I : M
-         Offset := OffMargins
-         This.Margins := {}
-         This.Margins.L := NumGet(PSD, Offset += 0, "Int")           ; Left
-         This.Margins.T := NumGet(PSD, Offset += 4, "Int")           ; Top
-         This.Margins.R := NumGet(PSD, Offset += 4, "Int")           ; Right
-         This.Margins.B := NumGet(PSD, Offset += 4, "Int")           ; Bottom
-         This.Margins.LT := Round((This.Margins.L / Metrics) * 1440) ; Left in twips
-         This.Margins.TT := Round((This.Margins.T / Metrics) * 1440) ; Top in twips
-         This.Margins.RT := Round((This.Margins.R / Metrics) * 1440) ; Right in twips
-         This.Margins.BT := Round((This.Margins.B / Metrics) * 1440) ; Bottom in twips
+         PSD := Buffer(PSD_Size, 0) ; PAGESETUPDLG 结构
+         ; 设置 PAGESETUPDLG 结构的大小
+           NumPut("UInt", PSD_Size, PSD)
+           ; 设置标志以返回默认值
+           NumPut("UInt", PSD_RETURNDEFAULT, PSD, OffFlags)
+         ; 调用 PageSetupDlg 函数
+           If !DllCall("Comdlg32.dll\PageSetupDlg", "Ptr", PSD, "UInt")
+              Return false
+         ; 释放全局内存
+           DllCall("GlobalFree", "UInt", NumGet(PSD, 2 * A_PtrSize, "UPtr"))
+           ; 释放全局内存
+           DllCall("GlobalFree", "UInt", NumGet(PSD, 3 * A_PtrSize, "UPtr"))
+         ; 获取标志
+           Flags := NumGet(PSD, OffFlags, "UInt")
+           ; 确定度量单位（千分之一英寸或百分之一毫米）
+           Metrics := (Flags & PSD_INTHOUSANDTHSOFINCHES) ? I : M
+         ; 设置边距偏移量
+           Offset := OffMargins
+           ; 创建边距对象
+           This.Margins := {}
+           ; 获取左边距
+           This.Margins.L := NumGet(PSD, Offset += 0, "Int")           ; 左
+           ; 获取上边距
+           This.Margins.T := NumGet(PSD, Offset += 4, "Int")           ; 上
+           ; 获取右边距
+           This.Margins.R := NumGet(PSD, Offset += 4, "Int")           ; 右
+           ; 获取下边距
+           This.Margins.B := NumGet(PSD, Offset += 4, "Int")           ; 下
+         ; 转换左边距为缇（1 英寸 = 1440 缇）
+           This.Margins.LT := Round((This.Margins.L / Metrics) * 1440) ; 左边距（缇）
+           ; 转换上边距为缇
+           This.Margins.TT := Round((This.Margins.T / Metrics) * 1440) ; 上边距（缇）
+         This.Margins.RT := Round((This.Margins.R / Metrics) * 1440) ; 右边距（缇）
+         This.Margins.BT := Round((This.Margins.B / Metrics) * 1440) ; 下边距（缇）
       }
       Return True
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetPrinterCaps(DC) { ; Get printer's capacities
+   GetPrinterCaps(DC) { ; 获取打印机的容量
       Static HORZRES         := 0x08, VERTRES         := 0x0A
            , LOGPIXELSX      := 0x58, LOGPIXELSY      := 0x5A
            , PHYSICALWIDTH   := 0x6E, PHYSICALHEIGHT  := 0x6F
            , PHYSICALOFFSETX := 0x70, PHYSICALOFFSETY := 0x71
       Caps := {}
-      ; Number of pixels per logical inch along the page width and height
+      ; 沿页面宽度和高度每逻辑英寸的像素数
       LPXX := DllCall("GetDeviceCaps", "Ptr", DC, "Int", LOGPIXELSX, "Int")
       LPXY := DllCall("GetDeviceCaps", "Ptr", DC, "Int", LOGPIXELSY, "Int")
-      ; The width and height of the physical page, in twips.
+      ; 物理页面的宽度和高度，以缇为单位。
       Caps.PHYW := Round((DllCall("GetDeviceCaps", "Ptr", DC, "Int", PHYSICALWIDTH, "Int") / LPXX) * 1440)
       Caps.PHYH := Round((DllCall("GetDeviceCaps", "Ptr", DC, "Int", PHYSICALHEIGHT, "Int") / LPXY) * 1440)
-      ; The distance from the left/right edge (PHYSICALOFFSETX) and the top/bottom edge (PHYSICALOFFSETY) of the
-      ; physical page to the edge of the printable area, in twips.
+      ; 从物理页面的左/右边缘（PHYSICALOFFSETX）和上/下边缘（PHYSICALOFFSETY）到可打印区域边缘的距离，以缇为单位。
       Caps.POFX := Round((DllCall("GetDeviceCaps", "Ptr", DC, "Int", PHYSICALOFFSETX, "Int") / LPXX) * 1440)
       Caps.POFY := Round((DllCall("GetDeviceCaps", "Ptr", DC, "Int", PHYSICALOFFSETY, "Int") / LPXY) * 1440)
-      ; Width and height of the printable area of the page, in twips.
+      ; 页面可打印区域的宽度和高度，以缇为单位。
       Caps.HRES := Round((DllCall("GetDeviceCaps", "Ptr", DC, "Int", HORZRES, "Int") / LPXX) * 1440)
       Caps.VRES := Round((DllCall("GetDeviceCaps", "Ptr", DC, "Int", VERTRES, "Int") / LPXY) * 1440)
       Return Caps
    }
    ; ===================================================================================================================
-   ; Internally used classes *
+   ; 内部使用的类 *
    ; ===================================================================================================================
-   ; CHARFORMAT2 structure -> docs.microsoft.com/en-us/windows/win32/api/richedit/ns-richedit-charformat2w_1
+   ; CHARFORMAT2 结构 -> docs.microsoft.com/en-us/windows/win32/api/richedit/ns-richedit-charformat2w_1
    Class CHARFORMAT2 Extends Buffer {
       Size {
          Get => NumGet(This, 0, "UInt")
@@ -1562,7 +1573,7 @@ Class RichEdit {
       }
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   ; PARAFORMAT2 structure -> docs.microsoft.com/en-us/windows/win32/api/richedit/ns-richedit-paraformat2_1
+   ; PARAFORMAT2 结构 -> docs.microsoft.com/en-us/windows/win32/api/richedit/ns-richedit-paraformat2_1
    Class PARAFORMAT2 Extends Buffer {
       Size {
          Get => NumGet(This, 0, "UInt")
@@ -1680,9 +1691,9 @@ Class RichEdit {
       }
    }
    ; ===================================================================================================================
-   ; Internally called methods *
+   ; 内部调用的方法 *
    ; ===================================================================================================================
-   GetBGR(RGB) { ; Get numeric BGR value from numeric RGB value or HTML color name
+   GetBGR(RGB) { ; 从数字 RGB 值或 HTML 颜色名称获取数字 BGR 值
       Static HTML := {BLACK:  0x000000, SILVER: 0xC0C0C0, GRAY:   0x808080, WHITE:   0xFFFFFF
                     , MAROON: 0x000080, RED:    0x0000FF, PURPLE: 0x800080, FUCHSIA: 0xFF00FF
                     , GREEN:  0x008000, LIME:   0x00FF00, OLIVE:  0x008080, YELLOW:  0x00FFFF
@@ -1692,14 +1703,14 @@ Class RichEdit {
       Return ((RGB & 0xFF0000) >> 16) + (RGB & 0x00FF00) + ((RGB & 0x0000FF) << 16)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetRGB(BGR) {  ; Get numeric RGB value from numeric BGR-Value
+   GetRGB(BGR) {  ; 从数字 BGR 值获取数字 RGB 值
       Return ((BGR & 0xFF0000) >> 16) + (BGR & 0x00FF00) + ((BGR & 0x0000FF) << 16)
    }
    ; -------------------------------------------------------------------------------------------------------------------
-   GetMeasurement() { ; Get locale measurement (metric / inch)
+   GetMeasurement() { ; 获取区域设置度量单位（公制/英寸）
       ; LOCALE_USER_DEFAULT = 0x0400, LOCALE_IMEASURE = 0x0D, LOCALE_RETURN_NUMBER = 0x20000000
-      Static Metric := 2.54  ; centimeters
-           , Inches := 1.00  ; inches
+      Static Metric := 2.54  ; 厘米
+           , Inches := 1.00  ; 英寸
            , Measurement := ""
       If (Measurement = "") {
          LCD := Buffer(4, 0)
